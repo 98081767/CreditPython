@@ -29,7 +29,7 @@ os.chdir('C:/Users/arche/Documents/UTS/Python-References/94691 Deep Learning/')
 
 print(os.getcwd())
 
-cdf = pd.read_csv('Credit card\\AT3_credit_train_STUDENT.csv')
+cdf = pd.read_csv('Credit card\CreditPython\AT3_credit_train_STUDENT.csv')
 
 print(type(cdf))
 
@@ -280,11 +280,202 @@ cdf.defaultnum.astype('int64')
 # check correlation of numeric variables
 correlation = cdf.corr()
 
+print(correlation)
+
 sns.heatmap(correlation, square=True, cmap='RdYlGn', vmin=-1, vmax=1)
 #looks like LIMIT_BAL, PAY_PC1, PAC_PC2, AMT_PC2 might have a minor relationship with default.
 
 #need to do one hot encoding on categorical variables.
 
+new_cdf = cdf
 
+new_cdf = pd.get_dummies(new_cdf, columns=['SEX'], drop_first=True, prefix='SEX')
+new_cdf = pd.get_dummies(new_cdf, columns=['EDUCATION'], drop_first=True, prefix='EDU')
+new_cdf = pd.get_dummies(new_cdf, columns=['MARRIAGE'], drop_first=True, prefix='MAR')
+new_cdf = pd.get_dummies(new_cdf, columns=['AGEGROUP'], drop_first=True, prefix='AGE')
+
+print(new_cdf.info())
+
+# check correlation of numeric variables
+correlation = new_cdf.corr()
+
+print(correlation)
+
+sns.heatmap(correlation, square=False, cmap='RdYlGn', vmin=-1, vmax=1, annot=False, linewidths=0.5, xticklabels=True, yticklabels=True)
+plt.xlabel('X', fontsize = 9)
+plt.ylabel('Y', fontsize = 9)
+plt.tick_params(labelsize=6)
+plt.show()
+
+#----------- do Logistic model regression
+
+# get X and Y 
+y = new_cdf.defaultnum.values
+
+#X = new_cdf.drop(['defaultnum', 'ID', 'AGE', 'default'], axis=1).values
+X = new_cdf.drop(['defaultnum', 'ID', 'AGE', 'default'], axis=1)
+
+type(y)
+#y = y.reshape(-1,1)
+#y.shape
+#y.ravel().shape
+
+print(len(y))
+print(X.count())
+#------------ centre and scale data columns
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve
+from sklearn.model_selection import GridSearchCV
+
+
+# Create training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state=42)
+        
+# Create the classifier: logreg
+logreg = LogisticRegression()
+        
+# Fit the classifier to the training data
+logreg.fit(X_train, y_train)
+        
+# Predict the labels of the test set: y_pred
+y_pred = logreg.predict(X_test)
+        
+# Compute and print the confusion matrix and classification report
+print(confusion_matrix(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+
+# Compute predicted probabilities: y_pred_prob
+y_pred_prob = logreg.predict_proba(X_test)[:,1]
+
+# Generate ROC curve values: fpr, tpr, thresholds
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+
+# Plot ROC curve
+plt.plot([0, 1], [0, 1], 'k--')
+plt.plot(fpr, tpr)
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.show()
+
+# Compute cross-validated AUC scores: cv_auc
+cv_auc = cross_val_score(logreg, X, y, cv=5, scoring='roc_auc')
+# Print list of AUC scores
+print("AUC scores computed using 5-fold cross-validation: {}".format(cv_auc))
+#AUC scores computed using 5-fold cross-validation: [0.62459126 0.62647825 0.67026845 0.66845498 0.66009284]
+
+print("Accuracy: {}".format(logreg.score(X_test, y_test)))
+#Accuracy: 0.7608695652173914
+
+#-----------try hyperparameter tuning
+
+# Create the hyperparameter grid
+c_space = np.logspace(-5, 8, 15)
+param_grid = {'C': c_space, 'penalty': ['l2']}
+
+# Instantiate the GridSearchCV object: logreg_cv
+logreg_cv = GridSearchCV(logreg, param_grid, cv=5)
+        
+# Fit it to the training data
+logreg_cv.fit(X_train, y_train)
+        
+ # Print the optimal parameters and best score
+print("Tuned Logistic Regression Parameter: {}".format(logreg_cv.best_params_))
+print("Tuned Logistic Regression Accuracy: {}".format(logreg_cv.best_score_))
+
+#Tuned Logistic Regression Parameter: {'C': 1e-05, 'penalty': 'l2'}
+#Tuned Logistic Regression Accuracy: 0.7574534161490684
+
+#-----------check cross validation
+cv_scores = cross_val_score(logreg, X, y, cv=5)
+print(cv_scores)
+#[0.75847826 0.75847826 0.75847826 0.75847826 0.75847826]
+
+
+#-------------Try with scaler
+# Import the necessary modules
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+# Setup the pipeline
+steps = [('scaler', StandardScaler()),
+         ('LogReg', logreg)]
+
+pipeline = Pipeline(steps)
+
+# Specify the hyperparameter space
+parameters = {'LogReg__C':c_space,
+              'LogReg__penalty':['l2']}
+
+# Instantiate the GridSearchCV object: cv
+cv = GridSearchCV(pipeline, param_grid=parameters)
+
+# Fit to the training set
+cv.fit(X_train, y_train)
+
+# Predict the labels of the test set: y_pred
+y_pred = cv.predict(X_test)
+
+# Compute and print metrics
+print("Accuracy: {}".format(cv.score(X_test, y_test)))
+print(classification_report(y_test, y_pred))
+print("Tuned Model Parameters: {}".format(cv.best_params_))
+
+# Accuracy: 0.7965217391304348
+#               precision    recall  f1-score   support
+
+#            0       0.81      0.96      0.88      5250
+#            1       0.68      0.28      0.40      1650
+
+#     accuracy                           0.80      6900
+#    macro avg       0.75      0.62      0.64      6900
+# weighted avg       0.78      0.80      0.76      6900
+
+# Tuned Model Parameters: {'LogReg__C': 31.622776601683793, 'LogReg__penalty': 'l2'}
+
+# Compute and print the confusion matrix and classification report
+print(confusion_matrix(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+# [[5034  216]
+#  [1188  462]]
+#               precision    recall  f1-score   support
+
+#            0       0.81      0.96      0.88      5250
+#            1       0.68      0.28      0.40      1650
+
+#     accuracy                           0.80      6900
+#    macro avg       0.75      0.62      0.64      6900
+# weighted avg       0.78      0.80      0.76      6900
+
+
+# Compute predicted probabilities: y_pred_prob
+y_pred_prob_cv = cv.predict_proba(X_test)[:,1]
+
+# Generate ROC curve values: fpr, tpr, thresholds
+fpr_cv, tpr_cv, thresholds_cv = roc_curve(y_test, y_pred_prob_cv)
+
+# Plot ROC curve
+plt.plot([0, 1], [0, 1], 'k--')
+plt.plot(fpr_cv, tpr_cv)
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.show()
+
+# Compute cross-validated AUC scores: cv_auc
+cv_auc2 = cross_val_score(cv, X, y, cv=5, scoring='roc_auc')
+# Print list of AUC scores
+print("AUC scores computed using 5-fold cross-validation: {}".format(cv_auc2))
+#AUC scores computed using 5-fold cross-validation: [0.73592897 0.73476999 0.74804845 0.74862284 0.76429019]
+
+print("Accuracy: {}".format(cv.score(X_test, y_test)))
+
+#outcome 
+#- Better AUC scores when scaling - 0.73592897 compared with 0.62
+#- Better accuracy when scaling 0.80 compared with 0.79
 
 
