@@ -478,4 +478,112 @@ print("Accuracy: {}".format(cv.score(X_test, y_test)))
 #- Better AUC scores when scaling - 0.73592897 compared with 0.62
 #- Better accuracy when scaling 0.80 compared with 0.79
 
+#------------------Using NN
+import tensorflow as tf
+
+# X_train_tf = tf.convert_to_tensor(X_train)
+# y_train_tf = tf.convert_to_tensor(y_train)
+# X_test_tf = tf.convert_to_tensor(X_test)
+# y_test_tf = tf.convert_to_tensor(y_test)
+
+# type(X_train_tf)
+# type(y_train_tf)
+
+# print(X_train_tf.shape)
+
+#X_train.info()
+#y_train[:5]
+
+# y_train_df = pd.DataFrame({'Target': y_train[:]})
+# y_train_df.info()
+
+
+train_tf = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+
+type(train_tf)
+
+
+#for feat, targ in train_tf.take(1):
+# print ('Features: {}, Target: {}'.format(feat, targ))
+
+# train_dataset = train_tf.shuffle(len(X_train)).batch(1)
+# print(X_train_tf.shape)
+
+
+
+def apply_scaler(df):
+    SS = StandardScaler() 
+    df[['LIMIT_BAL', 'PAY_PC1', 'PAY_PC2','PAY_PC3','AMT_PC1','AMT_PC2','AMT_PC3','AMT_PC4','AMT_PC5','AMT_PC6','AMT_PC7']] = SS.fit_transform(df[['LIMIT_BAL', 'PAY_PC1', 'PAY_PC2','PAY_PC3','AMT_PC1','AMT_PC2','AMT_PC3','AMT_PC4','AMT_PC5','AMT_PC6','AMT_PC7']])
+
+    return df
+    
+def split_train_test(df):
+    # get X and Y 
+    y = df.defaultnum.values
+
+    #X = new_cdf.drop(['defaultnum', 'ID', 'AGE', 'default'], axis=1).values
+    X = df.drop(['defaultnum', 'ID', 'AGE', 'default'], axis=1)
+
+    # Create training and test sets
+    fX_train, fX_test, fy_train, fy_test = train_test_split(X, y, test_size = 0.3, random_state=42)
+
+    return fX_train, fX_test, fy_train, fy_test
+    
+
+scaled_cdf = apply_scaler(new_cdf)
+
+scaled_cdf.info()
+
+X_train, X_test, y_train, y_test = split_train_test(scaled_cdf)
+
+
+#---------------type 1
+
+model = ""
+
+model = tf.keras.Sequential()
+
+#input shape is the number of features (columns)
+model.add(tf.keras.layers.Dense(21, activation='sigmoid', input_shape=(21,)))
+model.add(tf.keras.layers.Dense(16, activation='relu'))
+#model.add(tf.keras.layers.Flatten())
+model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
+
+#Set the optimizer, loss function, and metrics
+#model.compile(optimizer='Adam', loss='huber_loss', metrics=['accuracy'])
+model.compile(optimizer='SGD', loss='huber_loss', metrics=['accuracy'])
+
+
+# Add the number of epochs and the validation split
+model.fit(X_train, y_train, epochs=10, validation_split=0.20)
+#model.fit(train_dataset, epochs=10, validation_split=0.20)
+
+model.evaluate(X_test, y_test)
+#accuracy- 0.75
+
+
+#---------------type 2
+
+# def get_compiled_model():
+#   model = tf.keras.Sequential([
+#     tf.keras.layers.Dense(10, activation='relu'),
+#     tf.keras.layers.Dense(10, activation='relu'),
+#     tf.keras.layers.Dense(1)
+#   ])
+
+#   model.compile(optimizer='adam',
+#                 loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+#                 metrics=['accuracy'])
+#   return model
+
+# model = get_compiled_model()
+# model.fit(train_dataset, epochs=15)
+
+
+print(model.summary())
+
+
+
+
+
 
