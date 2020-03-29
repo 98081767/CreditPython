@@ -480,6 +480,8 @@ print("Accuracy: {}".format(cv.score(X_test, y_test)))
 
 #------------------Using NN
 import tensorflow as tf
+from tensorflow import keras
+
 
 # X_train_tf = tf.convert_to_tensor(X_train)
 # y_train_tf = tf.convert_to_tensor(y_train)
@@ -498,9 +500,9 @@ import tensorflow as tf
 # y_train_df.info()
 
 
-train_tf = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+#train_tf = tf.data.Dataset.from_tensor_slices((X_train, y_train))
 
-type(train_tf)
+#type(train_tf)
 
 
 #for feat, targ in train_tf.take(1):
@@ -566,9 +568,9 @@ model.evaluate(X_test, y_test)
 #plot model accuracy
 tf_test_loss = tf_hist.history['val_loss']
 tf_train_loss = tf_hist.history['loss']
-tf_train_acc = tf_hist.history['acc']
-tf_test_acc = tf_hist.history['val_acc']
 
+tf_test_acc = tf_hist.history['val_accuracy']
+tf_train_acc = tf_hist.history['accuracy']
 
 plt.subplot(1,2,1)
 plt.plot(range(num_epochs), tf_train_loss, color='blue', label='train')
