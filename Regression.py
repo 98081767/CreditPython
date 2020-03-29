@@ -540,6 +540,7 @@ X_train, X_test, y_train, y_test = split_train_test(scaled_cdf)
 #---------------type 1
 
 model = ""
+num_epochs = 100
 
 model = tf.keras.Sequential()
 
@@ -555,11 +556,61 @@ model.compile(optimizer='SGD', loss='huber_loss', metrics=['accuracy'])
 
 
 # Add the number of epochs and the validation split
-model.fit(X_train, y_train, epochs=10, validation_split=0.20)
+tf_hist = model.fit(X_train, y_train, epochs=num_epochs, validation_split=0.20)
 #model.fit(train_dataset, epochs=10, validation_split=0.20)
 
 model.evaluate(X_test, y_test)
 #accuracy- 0.75
+
+
+#plot model accuracy
+tf_test_loss = tf_hist.history['val_loss']
+tf_train_loss = tf_hist.history['loss']
+tf_train_acc = tf_hist.history['acc']
+tf_test_acc = tf_hist.history['val_acc']
+
+
+plt.subplot(1,2,1)
+plt.plot(range(num_epochs), tf_train_loss, color='blue', label='train')
+plt.plot(range(num_epochs), tf_test_loss, color='green', label='test')
+plt.ylabel('loss')
+plt.legend(loc='upper right')
+
+plt.subplot(1,2,2)
+plt.plot(range(num_epochs), tf_train_acc, color='blue', label='train')
+plt.plot(range(num_epochs), tf_test_acc, color='green', label='test')
+plt.ylabel('accuracy')
+plt.legend(loc='upper right')
+
+
+plt.show()
+plt.clf()
+
+
+# Compute and print the confusion matrix and classification report
+
+tf_train_prob = model.predict(X_train)
+tf_test_prob = model.predict(X_test)
+
+#mydf = pd.DataFrame({'Prob': tf_train_prob[:,0]})
+#mydf.describe()
+
+tf_train_prob[tf_train_prob <= 0.5]=0
+tf_train_prob[tf_train_prob > 0.5]=1
+
+tf_test_prob[tf_test_prob <= 0.5]=0
+tf_test_prob[tf_test_prob > 0.5]=1
+
+
+print(confusion_matrix(y_test, tf_test_prob))
+print(classification_report(y_test, tf_test_prob))
+
+
+#res_df = pd.DataFrame({'train_pred': tf_train_prob, 'train_act': y_train})
+#plt.hist(tf_train_prob)
+#plt.show()
+
+
 
 
 #---------------type 2
